@@ -1,0 +1,680 @@
+//
+//  ContentView+Body.swift
+//  NeverSayNo
+//
+//  Created by Die chen on 2025/7/1.
+//
+
+import SwiftUI
+import Foundation
+import Combine
+
+extension ContentView {
+    // MARK: - Body View
+    
+    var body: some View {
+        NavigationStack(path: $path) {
+            Group {
+                // showInternalInfoConfirmation 已删除（内部用户登录已移除）
+                if showAppleInfoConfirmation {
+                    // Apple用户信息确认界面
+                    UserInfoConfirmView(
+                        userManager: userManager,
+                        onConfirm: {
+                            showAppleInfoConfirmation = false
+                            loadMessagesOnLogin()
+                            // 🎯 新增：登录后预加载排行榜和推荐榜数据到缓存
+                            RankingDataManager.shared.preloadAllData(locationManager: locationManager, userManager: userManager)
+                        },
+                        onBack: {
+                            userManager.logout()
+                            showAppleInfoConfirmation = false
+                        }
+                    )
+                    .onAppear {
+                        let appleUserName = userManager.currentUser?.fullName ?? "未知用户"
+                        
+                        
+                        // 检查数据一致性
+                        if appleUserName != UserDefaultsManager.getCurrentUserName() {
+                        }
+                        if appleUserName != userManager.diamondManager?.currentUserName {
+                        }
+                    }
+                    .onChange(of: userManager.currentUser?.fullName) { oldValue, newValue in
+                        // 打印变化时的其他相关数据
+                    }
+                } else if showGuestInfoConfirmation {
+                    // 游客信息确认界面
+                    GuestInfoConfirmationView(
+                        displayName: .constant(userManager.currentUser?.fullName ?? ""),
+                        email: .constant(userManager.currentUser?.email ?? ""),
+                        onConfirm: {
+                            showGuestInfoConfirmation = false
+                            loadMessagesOnLogin()
+                            // 🎯 新增：登录后预加载排行榜和推荐榜数据到缓存
+                            RankingDataManager.shared.preloadAllData(locationManager: locationManager, userManager: userManager)
+                        },
+                        onCancel: {
+                            userManager.logout()
+                            showGuestInfoConfirmation = false
+                        },
+                        userManager: userManager
+                    )
+                    .onAppear {
+                    }
+                } else if !userManager.isLoggedIn {
+                    LoginView(userManager: userManager, locationManager: locationManager, onLoginSuccess: {
+                        // 使用导航扩展处理登录后导航
+                        handleLoginNavigation()
+                    })
+                } else {
+                    // 主界面 - 显示首页
+                    HomeTabView(
+                        locationManager: locationManager,
+                        userManager: userManager,
+                        stateManager: stateManager,
+                        unreadMessageCount: $unreadMessageCount,
+                        newFriendsCountManager: newFriendsCountManager
+                    )
+                }
+            }
+            .navigationDestination(for: String.self) { value in
+                navigationDestinationView(for: value)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ResetNavigationState"))) { _ in
+            // 重置导航路径
+            path.removeAll()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ClearAllNotifications"))) { _ in
+            // 🎯 新增：响应清除所有通知的通知，同时清除新朋友申请数量
+            newFriendsCountManager.updateCount(0)
+        }
+        .onChange(of: path) { oldPath, newPath in
+            handlePathChange(oldPath: oldPath, newPath: newPath)
+        }
+        .onChange(of: userManager.isLoggedIn) { oldValue, newValue in
+            
+            // 当用户登出时，重置标志
+            if !newValue {
+                hasLoadedMessagesOnLogin = false
+                showGuestInfoConfirmation = false
+                showAppleInfoConfirmation = false
+                // showInternalInfoConfirmation 已删除 = false
+                // 用户退出登录时，关闭通知栏
+                stateManager.dismissAppLaunchToast()
+            } else {
+                // 🎯 修改：通知栏查询将在信息确认完成后（loadMessagesOnLogin）执行，不在这里执行
+                // 🎯 新增：登录成功后立即检查黑名单和待删除账号
+                checkUserBlacklistAndPendingDeletionOnLogin { isBlacklisted, isPendingDeletion in
+                    DispatchQueue.main.async {
+                        if isBlacklisted {
+                            // 账号在黑名单中，显示弹窗提示
+                            showBlacklistAlert = true
+                            return
+                        }
+                        
+                        if isPendingDeletion {
+                            // 账号在待删除账号列表中，显示弹窗询问是否要取消删除
+                            if let currentUser = userManager.currentUser {
+                                pendingDeletionUserId = currentUser.id
+                                pendingDeletionUserName = currentUser.fullName
+                                pendingDeletionDeviceId = UIDevice.current.identifierForVendor?.uuidString ?? "unknown_device"
+                                showPendingDeletionAlert = true
+                            }
+                            return
+                        }
+                        
+                        // 账号正常，继续登录流程
+                        // 用户登录成功，检查是否需要显示信息确认界面
+                        // 检查标志，避免从个人信息页面退出登录时显示
+                        let isFromProfileTabLogout = UserDefaults.standard.bool(forKey: "isFromProfileTabLogout")
+                        let isFromProfileViewLogout = UserDefaults.standard.bool(forKey: "isFromProfileViewLogout")
+                        
+                        
+                        if !isFromProfileTabLogout && !isFromProfileViewLogout {
+                            
+                            // 立即显示信息确认界面，避免先显示主界面
+                            if userManager.currentUser?.loginType == .guest {
+                                showGuestInfoConfirmation = true
+                            } else if userManager.currentUser?.loginType == .apple {
+                                showAppleInfoConfirmation = true
+                            // .internal case 已删除
+                                
+                                // showInternalInfoConfirmation 已删除 = true
+                            } else {
+                            }
+                        } else {
+                        }
+                    }
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+            // 应用即将失去焦点时，保持登录状态，不自动注销
+            // 用户登录状态现在会持久化保存
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ReloadRandomMatchHistory"))) { _ in
+            // 🔧 响应ProfileTabView的重新加载请求
+            loadRandomMatchHistory()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RequestRandomMatchHistory"))) { _ in
+            // 🔧 新增：响应请求历史记录数据通知，同步数据给ProfileTabView
+            
+            // 发送数据同步通知给ProfileTabView
+            NotificationCenter.default.post(
+                name: NSNotification.Name("SyncRandomMatchHistory"), 
+                object: randomMatchHistory
+            )
+            
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ProfileTabHistoryItemDeleted"))) { notification in
+            // 🔧 新增：响应ProfileTabView的删除通知，同步删除操作
+            if let deletedItem = notification.object as? RandomMatchHistory {
+                // 从ContentView的randomMatchHistory中移除记录
+                randomMatchHistory.removeAll { $0.id == deletedItem.id }
+                
+                // 保存到UserDefaults
+                if let data = try? JSONEncoder().encode(randomMatchHistory) {
+                    let historyKey = StorageKeyUtils.getHistoryKey(for: userManager.currentUser)
+                    UserDefaults.standard.set(data, forKey: historyKey)
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("HistoryCleared"))) { _ in
+            // 🔧 响应历史记录清除通知，确保数据同步
+            randomMatchHistory.removeAll()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("HistoryItemDeleted"))) { notification in
+            // 🔧 优化：响应单个历史记录删除通知，确保数据同步
+            if let deletedItem = notification.object as? RandomMatchHistory {
+                // 🔧 优化：使用更高效的删除方式
+                randomMatchHistory.removeAll { $0.id == deletedItem.id }
+                
+                // 🔧 优化：异步保存，避免阻塞UI
+                DispatchQueue.global(qos: .userInitiated).async {
+                    
+                    self.saveRandomMatchHistory()
+                    
+                }
+                
+            } else {
+            }
+        }
+        // 🔧 优化：简化通知处理，避免复杂的表达式
+        .onAppear {
+            // 🔧 新增：应用启动时清除登录导航标志
+            let hadIsFromProfileTabLogout = UserDefaults.standard.bool(forKey: "isFromProfileTabLogout")
+            let hadIsFromProfileViewLogout = UserDefaults.standard.bool(forKey: "isFromProfileViewLogout")
+            if hadIsFromProfileTabLogout || hadIsFromProfileViewLogout {
+                UserDefaults.standard.set(false, forKey: "isFromProfileTabLogout")
+                UserDefaults.standard.set(false, forKey: "isFromProfileViewLogout")
+            } else {
+            }
+            
+            // 🎯 修改：移除应用启动时的通知栏查询，改为在登录成功后查询
+            
+            OnAppearHelpers.handleAppStartup(
+                userManager: userManager,
+                setupIMListener: setupIMListener,
+                startMessageRefreshTimer: startMessageRefreshTimer,
+                loadHistoryAndCheckLatestMatch: loadHistoryAndCheckLatestMatch,
+                path: $path
+            )
+            
+            // 🔧 新增：先加载黑名单，再加载历史记录数据到ContentView
+            loadBlacklist()
+            
+            // 🎯 新增：注册全局好友申请通知监听器（避免重复注册）
+            if notificationObservers.isEmpty {
+                let observer1 = NotificationCenter.default.addObserver(
+                    forName: NSNotification.Name("NewFriendshipRequest"),
+                    object: nil,
+                    queue: .main
+                ) { notification in
+                
+                // 🎯 新增：显示好友申请弹窗
+                if let userInfo = notification.userInfo,
+                   let senderName = userInfo["senderName"] as? String {
+                    let senderId = userInfo["senderId"] as? String ?? ""
+                    stateManager.friendRequestSenderName = senderName
+                    stateManager.friendRequestSenderId = senderId
+                    stateManager.showFriendRequestAlert = true
+                } else {
+                    // 如果没有在通知中传递，则从最新申请中获取
+                    FriendshipManager.shared.fetchFriendshipRequestsWithRetry(maxAttempts: 2) { requests, _ in
+                        DispatchQueue.main.async {
+                            if let requests = requests,
+                               let latestRequest = requests.filter({ $0.status == "pending" }).first {
+                                let senderId = latestRequest.user.id
+                                // 尝试从 UserNameRecord 查询用户名
+                                LeanCloudService.shared.fetchUserNameByUserId(objectId: senderId) { name, _ in
+                                    DispatchQueue.main.async {
+                                        let senderName = name ?? (latestRequest.user.fullName.isEmpty ? "未知用户" : latestRequest.user.fullName)
+                                        stateManager.friendRequestSenderName = senderName
+                                        stateManager.friendRequestSenderId = senderId
+                                        stateManager.showFriendRequestAlert = true
+                                    }
+                                }
+                            } else {
+                            }
+                        }
+                    }
+                }
+                }
+                notificationObservers.append(observer1)
+                
+                // 🎯 新增：注册从通知栏点击进入的通知监听器
+                let observer2 = NotificationCenter.default.addObserver(
+                    forName: NSNotification.Name("ShowFriendRequestAlertFromNotification"),
+                    object: nil,
+                    queue: .main
+                ) { notification in
+                
+                // 🎯 新增：先关闭所有窗口并导航到主页面
+                stateManager.showMessageSheet = false
+                stateManager.showProfileSheet = false
+                stateManager.showRechargeSheet = false
+                stateManager.showAvatarZoom = false
+                stateManager.showAvatarBackpack = false
+                stateManager.showTermsOfService = false
+                stateManager.showPrivacyPolicy = false
+                stateManager.showLocationHistory = false
+                stateManager.showRandomHistory = false
+                stateManager.showReportSheet = false
+                
+                // 关闭 LegacySearchView 中的 sheet（通过通知）
+                NotificationCenter.default.post(name: NSNotification.Name("DismissMessageSheet"), object: nil)
+                NotificationCenter.default.post(name: NSNotification.Name("DismissProfileSheet"), object: nil)
+                
+                // 导航到主页面（selectedTab = 0）
+                selectedTab = 0
+                NotificationCenter.default.post(name: NSNotification.Name("NavigateToMainTab"), object: nil)
+                
+                // 延迟显示弹窗，确保窗口已关闭
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    // 🎯 新增：显示好友申请弹窗
+                    if let userInfo = notification.userInfo,
+                       let senderName = userInfo["senderName"] as? String {
+                        let senderId = userInfo["senderId"] as? String ?? ""
+                        stateManager.friendRequestSenderName = senderName
+                        stateManager.friendRequestSenderId = senderId
+                        
+                        // 如果 senderId 为空，尝试从最新申请中获取
+                        if senderId.isEmpty {
+                            FriendshipManager.shared.fetchFriendshipRequestsWithRetry(maxAttempts: 2) { requests, _ in
+                                DispatchQueue.main.async {
+                                    if let requests = requests,
+                                       let latestRequest = requests.filter({ $0.status == "pending" }).first {
+                                        let actualSenderId = latestRequest.user.id
+                                        // 尝试从 UserNameRecord 查询用户名
+                                        LeanCloudService.shared.fetchUserNameByUserId(objectId: actualSenderId) { name, _ in
+                                            DispatchQueue.main.async {
+                                                let actualSenderName = name ?? (latestRequest.user.fullName.isEmpty ? senderName : latestRequest.user.fullName)
+                                                stateManager.friendRequestSenderName = actualSenderName
+                                                stateManager.friendRequestSenderId = actualSenderId
+                                                stateManager.showFriendRequestAlert = true
+                                            }
+                                        }
+                                    } else {
+                                        // 即使找不到，也显示弹窗
+                                        stateManager.showFriendRequestAlert = true
+                                    }
+                                }
+                            }
+                        } else {
+                            stateManager.showFriendRequestAlert = true
+                        }
+                    } else {
+                        // 如果没有在通知中传递，则从最新申请中获取
+                        FriendshipManager.shared.fetchFriendshipRequestsWithRetry(maxAttempts: 2) { requests, _ in
+                            DispatchQueue.main.async {
+                                if let requests = requests,
+                                   let latestRequest = requests.filter({ $0.status == "pending" }).first {
+                                    let senderId = latestRequest.user.id
+                                    // 尝试从 UserNameRecord 查询用户名
+                                    LeanCloudService.shared.fetchUserNameByUserId(objectId: senderId) { name, _ in
+                                        DispatchQueue.main.async {
+                                            let senderName = name ?? (latestRequest.user.fullName.isEmpty ? "未知用户" : latestRequest.user.fullName)
+                                            stateManager.friendRequestSenderName = senderName
+                                            stateManager.friendRequestSenderId = senderId
+                                            stateManager.showFriendRequestAlert = true
+                                        }
+                                    }
+                                } else {
+                                }
+                            }
+                        }
+                    }
+                }
+                }
+                notificationObservers.append(observer2)
+                
+                // 🎯 新增：监听关闭所有窗口并导航到主页面的通知
+                let observer3 = NotificationCenter.default.addObserver(
+                    forName: NSNotification.Name("CloseAllSheetsAndNavigateToMain"),
+                    object: nil,
+                    queue: .main
+                ) { _ in
+                
+                // 关闭所有 sheet
+                stateManager.showMessageSheet = false
+                stateManager.showProfileSheet = false
+                stateManager.showRechargeSheet = false
+                stateManager.showAvatarZoom = false
+                stateManager.showAvatarBackpack = false
+                stateManager.showTermsOfService = false
+                stateManager.showPrivacyPolicy = false
+                stateManager.showLocationHistory = false
+                stateManager.showRandomHistory = false
+                stateManager.showReportSheet = false
+                
+                // 关闭 LegacySearchView 中的 sheet（通过通知）
+                NotificationCenter.default.post(name: NSNotification.Name("DismissMessageSheet"), object: nil)
+                NotificationCenter.default.post(name: NSNotification.Name("DismissProfileSheet"), object: nil)
+                
+                // 导航到主页面（selectedTab = 0）
+                selectedTab = 0
+                NotificationCenter.default.post(name: NSNotification.Name("NavigateToMainTab"), object: nil)
+                
+                }
+                notificationObservers.append(observer3)
+            }
+        }
+        .alert("账号状态通知", isPresented: $showPendingDeletionAlert) {
+            Button("重新注册", role: .destructive) {
+                // 用户选择重新注册，删除 AccountDeletionRequest 记录
+                LeanCloudService.shared.deleteAccountDeletionRequest(
+                    userId: pendingDeletionUserId,
+                    userName: pendingDeletionUserName,
+                    deviceId: pendingDeletionDeviceId
+                ) { success in
+                    DispatchQueue.main.async {
+                        if success {
+                            // 重新检查，继续登录流程
+                            checkUserBlacklistAndPendingDeletionOnLogin { isBlacklisted, isPendingDeletion in
+                                DispatchQueue.main.async {
+                                    if isBlacklisted {
+                                        userManager.logout()
+                                        return
+                                    }
+                                    
+                                    if isPendingDeletion {
+                                        // 如果仍然在待删除列表中，可能是查询条件不匹配，再次显示弹窗
+                                        showPendingDeletionAlert = true
+                                        return
+                                    }
+                                    
+                                    // 账号正常，继续登录流程
+                                    // 用户登录成功，检查是否需要显示信息确认界面
+                                    // 检查标志，避免从个人信息页面退出登录时显示
+                                    let isFromProfileTabLogout = UserDefaults.standard.bool(forKey: "isFromProfileTabLogout")
+                                    let isFromProfileViewLogout = UserDefaults.standard.bool(forKey: "isFromProfileViewLogout")
+                                    
+                                    
+                                    if !isFromProfileTabLogout && !isFromProfileViewLogout {
+                                        
+                                        // 立即显示信息确认界面，避免先显示主界面
+                                        if userManager.currentUser?.loginType == .guest {
+                                            showGuestInfoConfirmation = true
+                                        } else if userManager.currentUser?.loginType == .apple {
+                                            showAppleInfoConfirmation = true
+                                        } else {
+                                        }
+                                    } else {
+                                    }
+                                }
+                            }
+                        } else {
+                            // 即使删除失败，也继续登录流程（避免用户无法登录）
+                            // 用户登录成功，检查是否需要显示信息确认界面
+                            // 检查标志，避免从个人信息页面退出登录时显示
+                            let isFromProfileTabLogout = UserDefaults.standard.bool(forKey: "isFromProfileTabLogout")
+                            let isFromProfileViewLogout = UserDefaults.standard.bool(forKey: "isFromProfileViewLogout")
+                            
+                            
+                            if !isFromProfileTabLogout && !isFromProfileViewLogout {
+                                
+                                // 立即显示信息确认界面，避免先显示主界面
+                                if userManager.currentUser?.loginType == .guest {
+                                    showGuestInfoConfirmation = true
+                                } else if userManager.currentUser?.loginType == .apple {
+                                    showAppleInfoConfirmation = true
+                                } else {
+                                }
+                            } else {
+                            }
+                        }
+                    }
+                }
+            }
+            Button("退出", role: .cancel) {
+                // 用户选择退出，退出登录
+                userManager.logout()
+            }
+        } message: {
+            Text("您的账号已被删除。如您希望继续使用此app，请点击\"重新注册\"按钮。")
+        }
+        .alert("账号已被限制", isPresented: $showBlacklistAlert) {
+            Button("确定", role: .cancel) {
+                // 用户确认后，退出登录
+                userManager.logout()
+            }
+        } message: {
+            Text("您的账号因违反社区管理规定已被限制使用，请联系管理人员。\n\n管理人员邮箱：928322941@qq.com")
+        }
+        .alert("请设置真实邮箱", isPresented: $showDefaultEmailAlert) {
+            Button("去设置") {
+                // 跳转到个人资料页面设置邮箱
+                NotificationCenter.default.post(name: NSNotification.Name("ShowProfileSheet"), object: nil)
+            }
+            Button("稍后", role: .cancel) {
+                // 用户选择稍后，通过通知继续执行搜索
+                NotificationCenter.default.post(name: NSNotification.Name("ContinueSearchAfterEmailAlert"), object: nil)
+            }
+        } message: {
+            Text("请将邮箱设置为真实的邮箱，以便其他用户能够联系到您")
+        }
+        .overlay(alignment: .center) {
+            // 🎯 新增：好友申请自定义弹窗
+            FriendRequestAlert(
+                isVisible: stateManager.showFriendRequestAlert,
+                senderId: stateManager.friendRequestSenderId,
+                senderName: stateManager.friendRequestSenderName,
+                onAccept: {
+                    handleAcceptFriendRequest()
+                },
+                onReject: {
+                    handleRejectFriendRequest()
+                },
+                onDismiss: {
+                    stateManager.showFriendRequestAlert = false
+                },
+                onAvatarTap: {
+                    handleFriendRequestAvatarTap()
+                }
+            )
+        }
+        // 🎯 新增：在 onDisappear 时移除所有观察者
+        .onDisappear {
+            for observer in notificationObservers {
+                NotificationCenter.default.removeObserver(observer)
+            }
+            notificationObservers.removeAll()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ShowDefaultEmailAlert"))) { _ in
+            // 收到显示默认邮箱提示的通知
+            showDefaultEmailAlert = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ContinueSearchAfterEmailAlert"))) { _ in
+            // 收到继续搜索的通知，跳过默认邮箱检查
+            // 🎯 修复：按userId隔离
+            if let userId = UserDefaultsManager.getCurrentUserId() {
+                UserDefaults.standard.set(true, forKey: "shouldSkipDefaultEmailCheck_\(userId)")
+                // 通过通知触发搜索（LegacySearchView会监听这个通知）
+                NotificationCenter.default.post(name: NSNotification.Name("TriggerSearchWithSkipCheck"), object: nil)
+                // 重置标志
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    UserDefaults.standard.set(false, forKey: "shouldSkipDefaultEmailCheck_\(userId)")
+                }
+            } else {
+                UserDefaults.standard.set(true, forKey: "shouldSkipDefaultEmailCheck")
+                NotificationCenter.default.post(name: NSNotification.Name("TriggerSearchWithSkipCheck"), object: nil)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    UserDefaults.standard.set(false, forKey: "shouldSkipDefaultEmailCheck")
+                }
+            }
+        }
+    }
+    
+    // MARK: - 好友申请处理
+    
+    /// 处理同意好友申请
+    private func handleAcceptFriendRequest() {
+        guard !stateManager.friendRequestSenderId.isEmpty else {
+            stateManager.showFriendRequestAlert = false
+            return
+        }
+        
+        stateManager.showFriendRequestAlert = false
+        
+        // 查找对应的好友申请
+        FriendshipManager.shared.fetchFriendshipRequests { requests, error in
+            DispatchQueue.main.async {
+                if error != nil {
+                    return
+                }
+                
+                guard let requests = requests,
+                      let currentUser = userManager.currentUser else {
+                    return
+                }
+                
+                // 查找对应的申请
+                let targetRequest = requests.first { request in
+                    request.user.id == stateManager.friendRequestSenderId &&
+                    request.friend.id == currentUser.id &&
+                    request.status == "pending"
+                }
+                
+                guard let request = targetRequest else {
+                    return
+                }
+                
+                // 接受好友申请
+                FriendshipManager.shared.acceptFriendshipRequest(request, attributes: nil) { success, errorMessage in
+                    DispatchQueue.main.async {
+                        if success {
+                            // 刷新好友申请列表
+                            NotificationCenter.default.post(name: NSNotification.Name("RefreshNewFriends"), object: nil)
+                            NotificationCenter.default.post(name: NSNotification.Name("FriendshipRequestUpdated"), object: nil)
+                        } else {
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    /// 处理弹窗中头像点击
+    private func handleFriendRequestAvatarTap() {
+        guard !stateManager.friendRequestSenderId.isEmpty else {
+            return
+        }
+        
+        
+        // 获取发送者信息
+        let senderId = stateManager.friendRequestSenderId
+        let senderName = stateManager.friendRequestSenderName
+        
+        // 关闭弹窗
+        stateManager.showFriendRequestAlert = false
+        
+        // 查询发送者的头像和登录类型，然后创建 MessageItem 并通过通知触发处理
+        LeanCloudService.shared.fetchUserAvatarByUserId(objectId: senderId) { avatar, _ in
+            LeanCloudService.shared.fetchUserNameAndLoginType(objectId: senderId) { name, loginType, _ in
+                DispatchQueue.main.async {
+                    let finalAvatar = avatar ?? "😀"
+                    let finalName = name ?? senderName
+                    let finalLoginType = loginType ?? "unknown"
+                    
+                    // 创建 MessageItem（类似于好友列表中的点击）
+                    let matchMessage = MessageItem(
+                        id: UUID(),
+                        objectId: nil,
+                        senderId: senderId,
+                        senderName: finalName,
+                        senderAvatar: finalAvatar,
+                        senderLoginType: finalLoginType,
+                        receiverId: userManager.currentUser?.id ?? "",
+                        receiverName: userManager.currentUser?.fullName ?? "我",
+                        receiverAvatar: "😊",
+                        receiverLoginType: userManager.currentUser?.loginType.toString(),
+                        content: "好友申请",
+                        timestamp: Date(),
+                        isRead: false,
+                        type: .text,
+                        deviceId: UIDevice.current.identifierForVendor?.uuidString,
+                        messageType: "friend_request",
+                        isMatch: false
+                    )
+                    
+                    // 通过通知触发 LegacySearchView 的 handleMessageTap
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("HandleMessageTapFromAlert"),
+                        object: matchMessage
+                    )
+                }
+            }
+        }
+    }
+    
+    /// 处理拒绝好友申请
+    private func handleRejectFriendRequest() {
+        guard !stateManager.friendRequestSenderId.isEmpty else {
+            stateManager.showFriendRequestAlert = false
+            return
+        }
+        
+        stateManager.showFriendRequestAlert = false
+        
+        // 查找对应的好友申请
+        FriendshipManager.shared.fetchFriendshipRequests { requests, error in
+            DispatchQueue.main.async {
+                if error != nil {
+                    return
+                }
+                
+                guard let requests = requests,
+                      let currentUser = userManager.currentUser else {
+                    return
+                }
+                
+                // 查找对应的申请
+                let targetRequest = requests.first { request in
+                    request.user.id == stateManager.friendRequestSenderId &&
+                    request.friend.id == currentUser.id &&
+                    request.status == "pending"
+                }
+                
+                guard let request = targetRequest else {
+                    return
+                }
+                
+                // 拒绝好友申请
+                FriendshipManager.shared.declineFriendshipRequest(request) { success, errorMessage in
+                    DispatchQueue.main.async {
+                        if success {
+                            // 刷新好友申请列表
+                            NotificationCenter.default.post(name: NSNotification.Name("RefreshNewFriends"), object: nil)
+                            NotificationCenter.default.post(name: NSNotification.Name("FriendshipRequestUpdated"), object: nil)
+                        } else {
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
