@@ -134,32 +134,8 @@ struct EditEmailSheet: View {
     }
     
     private func isValidEmail(_ email: String) -> Bool {
-        let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        if trimmedEmail.contains("@") {
-            let parts = trimmedEmail.components(separatedBy: "@")
-            guard parts.count == 2 else { return false }
-            
-            let localPart = parts[0]
-            let domainPart = parts[1]
-            
-            guard !localPart.isEmpty && localPart.count <= 64 else { return false }
-            
-            guard !domainPart.isEmpty && domainPart.contains(".") else { return false }
-            
-            let domainParts = domainPart.components(separatedBy: ".")
-            guard domainParts.count >= 2 else { return false }
-            
-            guard let topLevelDomain = domainParts.last, topLevelDomain.count >= 2 else { return false }
-            
-            let emailRegex = "^[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}$"
-            let emailPredicate = NSPredicate(format:"SELF MATCHES %@", emailRegex)
-            return emailPredicate.evaluate(with: trimmedEmail)
-        }
-        
-        let wechatIdRegex = "^[a-zA-Z][a-zA-Z0-9_-]{5,19}$"
-        let wechatIdPredicate = NSPredicate(format:"SELF MATCHES %@", wechatIdRegex)
-        return wechatIdPredicate.evaluate(with: trimmedEmail)
+        // 🎯 修改：使用统一的验证工具，支持emoji
+        return ValidationUtils.isValidEmail(email)
     }
 }
 

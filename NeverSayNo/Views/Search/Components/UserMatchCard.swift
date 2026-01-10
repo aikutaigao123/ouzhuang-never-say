@@ -34,6 +34,7 @@ struct UserMatchCard: View {
     @State private var showChampionAnimation: Bool = false
     @State private var crownRotation: Double = 0 // 皇冠旋转角度
     @State private var crownScale: CGFloat = 0.3 // 皇冠缩放（从更小开始）
+    @State private var previousLocationAngle: Double = 0 // 🎯 新增：跟踪前一个位置图标角度，用于平滑旋转
     @State private var crownOffsetX: CGFloat = 0 // 皇冠X偏移（从屏幕中心）
     @State private var crownOffsetY: CGFloat = 0 // 皇冠Y偏移（从屏幕中心）
     @State private var avatarScale: CGFloat = 0.8 // 头像缩放
@@ -467,10 +468,31 @@ struct UserMatchCard: View {
                             
                             let distance = DistanceUtils.calculateDistance(from: currentLocation, to: wgsLat, targetLongitude: wgsLon)
                             
+                            // 🎯 新增：计算方位角和旋转角度
+                            let bearing = BearingUtils.calculateBearing(
+                                from: currentLocation,
+                                to: wgsLat,
+                                targetLongitude: wgsLon
+                            )
+                            let headingValue = locationManager.heading?.trueHeading ?? 0
+                            
+                            // 计算最短路径的角度差，避免指针旋转一圈
+                            let rawAngle = calculateShortestLocationAngle(from: headingValue, to: bearing)
+                            
+                            // 使用智能角度管理，避免突然的大角度跳跃
+                            let displayLocationAngle = calculateSmartLocationAngle(rawAngle: rawAngle)
+                            
                             VStack(spacing: finalScale < 0.6 ? (finalScale < 0.3 ? 0 : (finalScale < 0.4 ? 1 : (finalScale < 0.5 ? 2 : 4))) : 6) { // 更精细的垂直间距控制
-                                Image(systemName: "location.fill")
+                                Image(systemName: "location.north.fill") // 🎯 修改：使用有方向性的图标，与按钮上方指针一致
                                     .foregroundColor(.green)
                                     .font(.system(size: 24))
+                                    .rotationEffect(.degrees(displayLocationAngle)) // 🎯 新增：旋转图标指向匹配用户方向
+                                    .animation(
+                                        abs(displayLocationAngle) <= 10 ? 
+                                            .easeInOut(duration: 0.3) :  // 小角度快速动画
+                                            .spring(response: 0.6, dampingFraction: 0.8),  // 大角度弹性动画
+                                        value: displayLocationAngle
+                                    )
                                 Text(DistanceUtils.formatDistance(distance))
                                     .font(.title2)
                                     .fontWeight(.semibold)
@@ -1117,5 +1139,46 @@ struct UserMatchCard: View {
     // 检查用户是否被当前用户喜欢
     private func isUserFavoritedByMe(userId: String) -> Bool {
         return isUserFavorited(userId)
+    }
+    
+    // 🎯 新增：计算最短路径角度差（用于位置图标）
+    private func calculateShortestLocationAngle(from: Double, to: Double) -> Double {
+        var angleDifference = to - from
+        
+        // 标准化到 [-180, 180] 范围
+        while angleDifference > 180 {
+            angleDifference -= 360
+        }
+        while angleDifference < -180 {
+            angleDifference += 360
+        }
+        
+        return angleDifference
+    }
+    
+    // 🎯 新增：智能角度管理 - 避免突然的大角度跳跃（用于位置图标）
+    private func calculateSmartLocationAngle(rawAngle: Double) -> Double {
+        // 计算与前一个角度的差值
+        let angleChange = rawAngle - previousLocationAngle
+        
+        // 如果角度变化很大（超过90度），可能是由于边界跳跃导致的
+        if abs(angleChange) > 90 {
+            // 选择更平滑的路径
+            let alternativeAngle = previousLocationAngle + (angleChange > 0 ? -360 : 360) + angleChange
+            if abs(alternativeAngle - previousLocationAngle) < abs(angleChange) {
+                // 更新状态
+                DispatchQueue.main.async {
+                    self.previousLocationAngle = alternativeAngle
+                }
+                return alternativeAngle
+            }
+        }
+        
+        // 更新状态
+        DispatchQueue.main.async {
+            self.previousLocationAngle = rawAngle
+        }
+        
+        return rawAngle
     }
 }

@@ -70,11 +70,6 @@ struct CompassDetailView: View {
                             )
                         }
                         .frame(width: 250, height: 250)
-                        .contentShape(Circle()) // 🎯 新增：设置点击区域为圆形
-                        .onTapGesture {
-                            // 🎯 修改：点击罗盘退出详情界面
-                            dismiss()
-                        }
                         
                         Spacer()
                     }
@@ -122,6 +117,11 @@ struct CompassDetailView: View {
                     Spacer()
                 }
             }
+        }
+        .contentShape(Rectangle()) // 🎯 新增：设置整个视图为可点击区域
+        .onTapGesture {
+            // 🎯 修改：点击任何地方退出详情界面
+            dismiss()
         }
     }
 }

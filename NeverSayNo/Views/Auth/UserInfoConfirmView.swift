@@ -477,39 +477,7 @@ struct UserInfoConfirmView: View {
     
     // 验证邮箱格式
     func isValidEmail(_ email: String) -> Bool {
-        // 基本格式检查
-        let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        // 1. 先检查是否是邮箱格式
-        if trimmedEmail.contains("@") {
-            // 检查@符号是否在开头或结尾
-            let parts = trimmedEmail.components(separatedBy: "@")
-            guard parts.count == 2 else { return false }
-            
-            let localPart = parts[0]
-            let domainPart = parts[1]
-            
-            // 检查本地部分
-            guard !localPart.isEmpty && localPart.count <= 64 else { return false }
-            
-            // 检查域名部分
-            guard !domainPart.isEmpty && domainPart.contains(".") else { return false }
-            
-            // 检查域名格式
-            let domainParts = domainPart.components(separatedBy: ".")
-            guard domainParts.count >= 2 else { return false }
-            
-            // 检查顶级域名长度
-            guard let topLevelDomain = domainParts.last, topLevelDomain.count >= 2 else { return false }
-            
-            // 使用正则表达式进行最终验证
-            let emailRegex = "^[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}$"
-            let emailPredicate = NSPredicate(format:"SELF MATCHES %@", emailRegex)
-            return emailPredicate.evaluate(with: trimmedEmail)
-        }
-        
-        let wechatIdRegex = "^[a-zA-Z][a-zA-Z0-9_-]{5,19}$"
-        let wechatIdPredicate = NSPredicate(format:"SELF MATCHES %@", wechatIdRegex)
-        return wechatIdPredicate.evaluate(with: trimmedEmail)
+        // 🎯 修改：使用统一的验证工具，支持emoji
+        return ValidationUtils.isValidEmail(email)
     }
 }

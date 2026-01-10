@@ -15,6 +15,8 @@
 		2835A9622EA60EA200B19BDB /* AppIntents.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppIntents.framework; path = System/Library/Frameworks/AppIntents.framework; sourceTree = SDKROOT; };
 		286ACD682F0ED7CD00EA59E7 /* TestLocation.gpx */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = TestLocation.gpx; path = ../TestLocation.gpx; sourceTree = "<group>"; };
 		286ACD692F0EDC7300EA59E7 /* TestLocation.gpx */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = TestLocation.gpx; path = ../TestLocation.gpx; sourceTree = "<group>"; };
+		28DE45302F12C5A100AE6986 /* TestLocation.gpx */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = TestLocation.gpx; path = "../未命名文件夹/TestLocation.gpx"; sourceTree = "<group>"; };
+		28DE45322F12C6A200AE6986 /* TestLocation.gpx */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = TestLocation.gpx; path = ../TestLocation.gpx; sourceTree = "<group>"; };
 		743FE58NeverSayNoE13E0CF00694704 /* NeverSayNo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NeverSayNo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -65,6 +67,8 @@
 			children = (
 				286ACD682F0ED7CD00EA59E7 /* TestLocation.gpx */,
 				286ACD692F0EDC7300EA59E7 /* TestLocation.gpx */,
+				28DE45302F12C5A100AE6986 /* TestLocation.gpx */,
+				28DE45322F12C6A200AE6986 /* TestLocation.gpx */,
 				743FE5852E13E0CF00694704 /* NeverSayNo */,
 				2835A9612EA60EA200B19BDB /* Frameworks */,
 				743FE5842E13E0CF00694704 /* Products */,
@@ -247,7 +251,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 18.2;
+				MARKETING_VERSION = 18.7;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.yonderspace-cd.NeverSayNo.app";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -275,7 +279,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 18.2;
+				MARKETING_VERSION = 18.7;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.yonderspace-cd.NeverSayNo.app";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
