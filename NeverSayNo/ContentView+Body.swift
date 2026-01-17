@@ -548,8 +548,16 @@ extension ContentView {
                 NotificationCenter.default.post(name: NSNotification.Name("ShowProfileSheet"), object: nil)
             }
             Button("稍后", role: .cancel) {
-                // 用户选择稍后，通过通知继续执行搜索
-                NotificationCenter.default.post(name: NSNotification.Name("ContinueSearchAfterEmailAlert"), object: nil)
+                // 🎯 修改：根据来源决定后续操作
+                if stateManager.isDefaultEmailAlertFromMessageButton {
+                    // 来自消息按钮：继续显示消息界面
+                    stateManager.isDefaultEmailAlertFromMessageButton = false
+                    // 发送通知继续显示消息界面
+                    NotificationCenter.default.post(name: NSNotification.Name("ContinueMessageAfterEmailAlert"), object: nil)
+                } else {
+                    // 来自搜索按钮：继续执行搜索
+                    NotificationCenter.default.post(name: NSNotification.Name("ContinueSearchAfterEmailAlert"), object: nil)
+                }
             }
         } message: {
             Text("请将邮箱设置为真实联系方式")
@@ -618,6 +626,10 @@ extension ContentView {
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ShowDefaultEmailAlert"))) { _ in
             // 收到显示默认邮箱提示的通知
+            // 🎯 新增：如果不是从消息按钮触发的，确保标志为 false（搜索按钮场景）
+            if !stateManager.isDefaultEmailAlertFromMessageButton {
+                stateManager.isDefaultEmailAlertFromMessageButton = false
+            }
             showDefaultEmailAlert = true
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ContinueSearchAfterEmailAlert"))) { _ in
@@ -638,6 +650,49 @@ extension ContentView {
                     UserDefaults.standard.set(false, forKey: "shouldSkipDefaultEmailCheck")
                 }
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ContinueMessageAfterEmailAlert"))) { _ in
+            // 🎯 新增：监听从邮箱提示弹窗点击"稍后"后继续显示消息界面的通知（TabBar场景）
+            guard let currentUser = userManager.currentUser else {
+                return
+            }
+            let userId = currentUser.id
+            // 直接继续显示消息界面，跳过邮箱检查
+            UserDefaultsManager.recordMessageButtonClick(userId: userId)
+            // 从FriendshipManager获取好友列表，并从服务器获取消息数据
+            FriendshipManager.shared.fetchFriendsList { friends, error in
+                DispatchQueue.main.async {
+                    if error != nil {
+                    } else if let friends = friends {
+                        if friends.isEmpty {
+                        } else {
+                            guard let currentUser = self.userManager.currentUser else {
+                                return
+                            }
+                            
+                            // 从服务器获取所有消息数据
+                            LeanCloudService.shared.fetchMessages(userId: currentUser.id) { allMessages, _ in
+                                DispatchQueue.main.async {
+                                    let allMessagesList = allMessages ?? []
+                                    
+                                    // 过滤拍一拍消息
+                                    let patMessages = MessageUtils.filterPatMessagesByUserId(allMessagesList, currentUserId: currentUser.id)
+                                    _ = MessageUtils.processPatMessages(patMessages)
+                                    
+                                    // 过滤普通消息（排除拍一拍）
+                                    _ = allMessagesList.filter { message in
+                                        let isNotPatMessage = message.messageType != "pat" && !message.content.contains("拍了拍")
+                                        return isNotPatMessage
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                    }
+                }
+            }
+            // 显示消息界面
+            stateManager.showMessageSheet = true
         }
     }
     

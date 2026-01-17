@@ -774,6 +774,16 @@ extension LegacySearchView {
                 handleMessageTap(message: message)
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ContinueMessageAfterEmailAlert"))) { _ in
+            // 🎯 新增：监听从邮箱提示弹窗点击"稍后"后继续显示消息界面的通知
+            guard let currentUser = userManager.currentUser else {
+                return
+            }
+            let userId = currentUser.id
+            // 直接继续显示消息界面，跳过邮箱检查
+            UserDefaultsManager.recordMessageButtonClick(userId: userId)
+            showMessageSheet = true
+        }
         .onDisappear {
             // 停止持续位置更新
             locationManager.stopUpdatingLocation()

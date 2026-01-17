@@ -223,6 +223,8 @@ extension ContentView {
                         
                         if isDefaultEmail {
                             // 是默认邮箱格式，显示提示
+                            // 🎯 新增：标记这是从消息按钮触发的提示
+                            stateManager.isDefaultEmailAlertFromMessageButton = true
                             NotificationCenter.default.post(name: NSNotification.Name("ShowDefaultEmailAlert"), object: nil)
                             return // 不继续执行，先显示提示
                         }

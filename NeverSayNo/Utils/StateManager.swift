@@ -82,6 +82,7 @@ class StateManager: ObservableObject {
     @Published var patActionLimitMessage = ""
     @Published var showMessageButtonLimitAlert = false
     @Published var messageButtonLimitMessage = ""
+    @Published var isDefaultEmailAlertFromMessageButton = false // 🎯 新增：标记邮箱提示是否来自消息按钮
     
     // MARK: - 表单数据
     @Published var username = ""
