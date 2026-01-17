@@ -62,29 +62,13 @@ struct InfoToast: View {
                         .padding(.horizontal, 20)
                     
                     HStack(spacing: 12) {
-                        if let onDisagree = onDisagree {
-                            Button(action: {
-                                onDisagree()
-                            }) {
-                                Text("不同意")
-                                    .font(.subheadline)
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 10)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .fill(Color.white.opacity(0.2))
-                                    )
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                        }
-                        
-                        if let onAgree = onAgree {
+                        // 🎯 版本更新通知：只显示一个"更新"按钮，不显示"不同意"按钮
+                        if let onAgree = onAgree, onDisagree == nil {
+                            // 只有一个按钮时，按钮占满宽度
                             Button(action: {
                                 onAgree()
                             }) {
-                                Text(agreeButtonText ?? "同意") // 🎯 使用自定义文本，默认为"同意"
+                                Text(agreeButtonText ?? "更新")
                                     .font(.subheadline)
                                     .fontWeight(.semibold)
                                     .foregroundColor(.white)
@@ -96,6 +80,43 @@ struct InfoToast: View {
                                     )
                             }
                             .buttonStyle(PlainButtonStyle())
+                        } else {
+                            // 两个按钮的情况（普通通知）
+                            if let onDisagree = onDisagree {
+                                Button(action: {
+                                    onDisagree()
+                                }) {
+                                    Text("不同意")
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 10)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(Color.white.opacity(0.2))
+                                        )
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                            
+                            if let onAgree = onAgree {
+                                Button(action: {
+                                    onAgree()
+                                }) {
+                                    Text(agreeButtonText ?? "同意")
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 10)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(Color.white.opacity(0.3))
+                                        )
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
                         }
                     }
                     .padding(.horizontal, 20)

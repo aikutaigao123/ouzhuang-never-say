@@ -353,70 +353,70 @@ struct UploadConfirmSheet: View {
                     // .background(Color.purple.opacity(0.1))
                     // .cornerRadius(8)
                     
-                    // 地址输入框
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Image(systemName: "map.fill")
-                                .foregroundColor(.orange)
-                                .font(.title3)
-                            
-                            Text("地址")
-                                .font(.headline)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.primary)
-                            
-                            Spacer()
-                            
-                            if isGeocoding {
-                                HStack(spacing: 4) {
-                                    ProgressView()
-                                        .scaleEffect(0.7)
-                                    Text("解析中...")
-                                        .font(.caption)
-                                        .foregroundColor(.orange)
-                                }
-                            } else if let error = geocodingError {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "exclamationmark.triangle.fill")
-                                        .font(.caption)
-                                        .foregroundColor(.red)
-                                    Text(error)
-                                        .font(.caption)
-                                        .foregroundColor(.red)
-                                }
-                            }
-                        }
-                        
-                        TextField("请输入地址，系统将自动解析为坐标", text: Binding(
-                            get: { editableAddress },
-                            set: { newValue in
-                                editableAddress = StringHelpers.limitToBytes(newValue, maxBytes: 700)
-                            }
-                        ))
-                            .textFieldStyle(.roundedBorder)
-                            .font(.body)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 10)
-                            .background(Color(.systemBackground))
-                            .cornerRadius(12)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color.orange.opacity(0.3), lineWidth: 1)
-                            )
-                            .onChange(of: editableAddress) { _, newAddress in
-                                // 地址改变时清除错误信息
-                                geocodingError = nil
-                                
-                                if !newAddress.isEmpty && !isGeocoding {
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                                        if editableAddress == newAddress {
-                                            onGeocodeAddress()
-                                        }
-                                    }
-                                }
-                            }
-                    }
-                    .padding(.horizontal, 20)
+                    // 地址输入框 - 已隐藏
+                    // VStack(alignment: .leading, spacing: 12) {
+                    //     HStack {
+                    //         Image(systemName: "map.fill")
+                    //             .foregroundColor(.orange)
+                    //             .font(.title3)
+                    //         
+                    //         Text("地址")
+                    //             .font(.headline)
+                    //             .fontWeight(.semibold)
+                    //             .foregroundColor(.primary)
+                    //         
+                    //         Spacer()
+                    //         
+                    //         if isGeocoding {
+                    //             HStack(spacing: 4) {
+                    //                 ProgressView()
+                    //                     .scaleEffect(0.7)
+                    //                 Text("解析中...")
+                    //                     .font(.caption)
+                    //                     .foregroundColor(.orange)
+                    //             }
+                    //         } else if let error = geocodingError {
+                    //             HStack(spacing: 4) {
+                    //                 Image(systemName: "exclamationmark.triangle.fill")
+                    //                     .font(.caption)
+                    //                     .foregroundColor(.red)
+                    //                 Text(error)
+                    //                     .font(.caption)
+                    //                     .foregroundColor(.red)
+                    //             }
+                    //         }
+                    //     }
+                    //     
+                    //     TextField("请输入地址，系统将自动解析为坐标", text: Binding(
+                    //         get: { editableAddress },
+                    //         set: { newValue in
+                    //             editableAddress = StringHelpers.limitToBytes(newValue, maxBytes: 700)
+                    //         }
+                    //     ))
+                    //         .textFieldStyle(.roundedBorder)
+                    //         .font(.body)
+                    //         .padding(.horizontal, 12)
+                    //         .padding(.vertical, 10)
+                    //         .background(Color(.systemBackground))
+                    //         .cornerRadius(12)
+                    //         .overlay(
+                    //             RoundedRectangle(cornerRadius: 12)
+                    //                 .stroke(Color.orange.opacity(0.3), lineWidth: 1)
+                    //         )
+                    //         .onChange(of: editableAddress) { _, newAddress in
+                    //             // 地址改变时清除错误信息
+                    //             geocodingError = nil
+                    //             
+                    //             if !newAddress.isEmpty && !isGeocoding {
+                    //                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    //                     if editableAddress == newAddress {
+                    //                         onGeocodeAddress()
+                    //                     }
+                    //                 }
+                    //             }
+                    //         }
+                    // }
+                    // .padding(.horizontal, 20)
                     
                 }
                 .padding(.horizontal, 16)

@@ -207,10 +207,15 @@ extension LegacySearchView {
                     InfoToast(
                         isVisible: stateManager.showAppLaunchToast,
                         message: stateManager.appLaunchMessage,
-                        title: "欢迎使用 欧庄 - Never say No",
+                        title: stateManager.isVersionUpdateNotification ? "版本更新" : "欢迎使用 欧庄 - Never say No",
                         onAgree: {
+                            // 🎯 版本更新通知：直接打开 App Store
+                            if stateManager.isVersionUpdateNotification {
+                                openAppStore()
+                                stateManager.dismissAppLaunchToast()
+                            }
                             // 🎯 新增：如果是触发消息，打开 App Store
-                            if stateManager.isTriggerNotification {
+                            else if stateManager.isTriggerNotification {
                                 // 打开 App Store
                                 openAppStore()
                                 // 关闭通知栏
@@ -233,8 +238,8 @@ extension LegacySearchView {
                                 }
                             }
                         },
-                        onDisagree: {
-                            // 点击不同意，退出登录
+                        onDisagree: stateManager.isVersionUpdateNotification ? nil : {
+                            // 点击不同意，退出登录（版本更新通知不显示此按钮）
                             // 先关闭通知栏
                             stateManager.dismissAppLaunchToast()
                             // 执行退出登录
@@ -244,7 +249,7 @@ extension LegacySearchView {
                                 NotificationCenter.default.post(name: NSNotification.Name("ResetNavigationState"), object: nil)
                             }
                         },
-                        agreeButtonText: stateManager.isTriggerNotification ? "打开 App Store" : nil // 🎯 新增：如果是触发消息，按钮文本改为"打开 App Store"
+                        agreeButtonText: stateManager.isVersionUpdateNotification ? "前往更新" : (stateManager.isTriggerNotification ? "打开 App Store" : nil) // 🎯 版本更新通知按钮文本为"前往更新"
                     )
                     .padding(.top, 60) // 距离顶部60点，下移通知栏
                     Spacer()
@@ -786,14 +791,46 @@ extension LegacySearchView {
                         return
                     }
                     
-                    // 查询通知内容
-                    LeanCloudService.shared.fetchNotificationItems { items, error in
+                    // 查询通知内容（同时读取Version表）
+                    LeanCloudService.shared.fetchNotificationItems { items, version, error in
                         DispatchQueue.main.async {
                             // 再次检查用户是否仍然登录
                             if userManager.isLoggedIn, !items.isEmpty {
                                 // 依次显示所有通知（全局通知在前，用户特定通知在后）
                                 let notificationItems = items.map { (message: $0.message, isBlacklist: $0.isBlacklist) }
                                 stateManager.showAppLaunchToasts(items: notificationItems)
+                            }
+                            
+                            // 处理版本信息：检查是否需要更新
+                            // 🎯 注意：如果 Version 表为空，version 为 nil，不做任何提示
+                            if let version = version {
+                                // 检查版本是否一致
+                                if let currentVersion = VersionHelpers.getCurrentAppVersion() {
+                                    let isVersionDifferent = !VersionHelpers.isCurrentVersionEqual(version.version)
+                                    
+                                    if isVersionDifferent {
+                                        // 版本不一致，显示更新提示
+                                        var updateMessage: String
+                                        
+                                        // 如果有更新消息，使用更新消息
+                                        if let customMessage = version.updateMessage, !customMessage.isEmpty {
+                                            updateMessage = customMessage
+                                        } else if let minVersion = version.minVersion,
+                                                  VersionHelpers.isCurrentVersionLessThan(minVersion) {
+                                            // 如果当前版本低于最低支持版本，显示强制更新提示
+                                            updateMessage = "您的版本（\(currentVersion)）已不再支持，请更新至最新版本（\(version.version)）以继续使用。"
+                                        } else {
+                                            // 普通版本更新提示
+                                            updateMessage = "发现新版本（\(version.version)），当前版本为 \(currentVersion)。\n\n新版本包含功能优化和问题修复，建议您及时更新以获得更好的使用体验。"
+                                        }
+                                        
+                                        // 显示版本更新通知（使用专门的版本更新方法）
+                                        stateManager.showVersionUpdateToast(message: updateMessage)
+                                    }
+                                }
+                                
+                                // 检查最低支持版本（如果版本不一致检查中已经处理过，这里不再重复显示）
+                                // 注意：此检查已在版本不一致检查中处理，这里保留作为备用
                             }
                         }
                     }

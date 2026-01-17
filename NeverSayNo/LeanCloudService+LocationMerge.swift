@@ -192,7 +192,7 @@ extension LeanCloudService {
                 return
             }
             
-            let urlString = "\(serverUrl)/1.1/classes/LoginRecord?order=-createdAt&limit=\(pageSize)&skip=\(skip)"
+            let urlString = "\(serverUrl)/1.1/classes/LoginRecord?order=-loginTime&limit=\(pageSize)&skip=\(skip)"
             guard let url = URL(string: urlString) else {
                 completion(nil, "URL创建失败")
                 return

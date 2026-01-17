@@ -234,10 +234,10 @@ extension LeanCloudService {
         var retryCount = 0
         
         func attempt() {
-            // ✅ 按照开发指南：使用 LCQuery 创建查询（与 fetchUserAvatar 一致）
+            // ✅ 按照开发指南：使用 LCQuery 创建查询
             let query = LCQuery(className: "LoginRecord")
             query.whereKey("userId", .equalTo(userId))
-            query.whereKey("updatedAt", .descending) // 🔧 统一：使用 updatedAt（与用户头像查询一致）
+            query.whereKey("loginTime", .descending) // 🔧 修改：使用 loginTime 字段排序
             query.limit = 1
             
             query.find { result in
@@ -245,11 +245,33 @@ extension LeanCloudService {
                     switch result {
                     case .success(let records):
                         if let firstRecord = records.first {
-                            // 🎯 修改：统一使用 updatedAt 字段（与用户头像查询一致）
+                            // 🎯 修改：使用 loginTime 字段（字符串类型，需要解析）
                             var date: Date?
                             
-                            // 优先使用 updatedAt 字段（Date 类型）
-                            if let updatedAt = firstRecord.updatedAt {
+                            // 优先使用 loginTime 字段（String 类型，需要解析）
+                            if let loginTimeString = firstRecord["loginTime"]?.stringValue, !loginTimeString.isEmpty {
+                                // 尝试多种时间格式解析
+                                // 1. 尝试ISO8601格式（带毫秒）
+                                let formatter1 = ISO8601DateFormatter()
+                                formatter1.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                                date = formatter1.date(from: loginTimeString)
+                                
+                                // 2. 如果失败，尝试ISO8601格式（不带毫秒）
+                                if date == nil {
+                                    let formatter2 = ISO8601DateFormatter()
+                                    formatter2.formatOptions = [.withInternetDateTime]
+                                    date = formatter2.date(from: loginTimeString)
+                                }
+                                
+                                // 3. 如果还是失败，尝试自定义格式
+                                if date == nil {
+                                    let formatter3 = DateFormatter()
+                                    formatter3.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
+                                    formatter3.timeZone = TimeZone(abbreviation: "UTC")
+                                    date = formatter3.date(from: loginTimeString)
+                                }
+                            } else if let updatedAt = firstRecord.updatedAt {
+                                // 回退到 updatedAt 字段
                                 date = updatedAt.value
                             } else if let createdAt = firstRecord.createdAt {
                                 // 回退到 createdAt 字段
@@ -333,10 +355,10 @@ extension LeanCloudService {
                 var retryCount = 0
                 
                 func attempt() {
-                    // ✅ 按照开发指南：使用 LCQuery 创建查询（与 fetchUserAvatar 一致）
+                    // ✅ 按照开发指南：使用 LCQuery 创建查询
                     let query = LCQuery(className: "LoginRecord")
                     query.whereKey("userId", .equalTo(userId))
-                    query.whereKey("updatedAt", .descending) // 🔧 统一：使用 updatedAt（与用户头像查询一致）
+                    query.whereKey("loginTime", .descending) // 🔧 修改：使用 loginTime 字段排序
                     query.limit = 1
                     
                     query.find { result in
@@ -344,11 +366,33 @@ extension LeanCloudService {
                             switch result {
                             case .success(let records):
                                 if let firstRecord = records.first {
-                                    // 🎯 修改：统一使用 updatedAt 字段（与用户头像查询一致）
+                                    // 🎯 修改：使用 loginTime 字段（字符串类型，需要解析）
                                     var date: Date?
                                     
-                                    // 优先使用 updatedAt 字段（Date 类型）
-                                    if let updatedAt = firstRecord.updatedAt {
+                                    // 优先使用 loginTime 字段（String 类型，需要解析）
+                                    if let loginTimeString = firstRecord["loginTime"]?.stringValue, !loginTimeString.isEmpty {
+                                        // 尝试多种时间格式解析
+                                        // 1. 尝试ISO8601格式（带毫秒）
+                                        let formatter1 = ISO8601DateFormatter()
+                                        formatter1.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                                        date = formatter1.date(from: loginTimeString)
+                                        
+                                        // 2. 如果失败，尝试ISO8601格式（不带毫秒）
+                                        if date == nil {
+                                            let formatter2 = ISO8601DateFormatter()
+                                            formatter2.formatOptions = [.withInternetDateTime]
+                                            date = formatter2.date(from: loginTimeString)
+                                        }
+                                        
+                                        // 3. 如果还是失败，尝试自定义格式
+                                        if date == nil {
+                                            let formatter3 = DateFormatter()
+                                            formatter3.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
+                                            formatter3.timeZone = TimeZone(abbreviation: "UTC")
+                                            date = formatter3.date(from: loginTimeString)
+                                        }
+                                    } else if let updatedAt = firstRecord.updatedAt {
+                                        // 回退到 updatedAt 字段
                                         date = updatedAt.value
                                     } else if let createdAt = firstRecord.createdAt {
                                         // 回退到 createdAt 字段
@@ -453,12 +497,34 @@ extension LeanCloudService {
                         
                         // 转换为结果格式
                         for (userId, record) in userLatestRecords {
-                            // 🎯 修改：统一使用 updatedAt 字段（与用户头像查询一致）
+                            // 🎯 修改：使用 loginTime 字段（字符串类型，需要解析）
                             var date: Date?
                             
-                            // 优先尝试从 updatedAt 字段获取（Date 类型）
-                            if let updatedAtDict = record["updatedAt"] as? [String: Any],
-                               let updatedAtString = updatedAtDict["iso"] as? String {
+                            // 优先使用 loginTime 字段（String 类型，需要解析）
+                            if let loginTimeString = record["loginTime"] as? String, !loginTimeString.isEmpty {
+                                // 尝试多种时间格式解析
+                                // 1. 尝试ISO8601格式（带毫秒）
+                                let formatter1 = ISO8601DateFormatter()
+                                formatter1.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                                date = formatter1.date(from: loginTimeString)
+                                
+                                // 2. 如果失败，尝试ISO8601格式（不带毫秒）
+                                if date == nil {
+                                    let formatter2 = ISO8601DateFormatter()
+                                    formatter2.formatOptions = [.withInternetDateTime]
+                                    date = formatter2.date(from: loginTimeString)
+                                }
+                                
+                                // 3. 如果还是失败，尝试自定义格式
+                                if date == nil {
+                                    let formatter3 = DateFormatter()
+                                    formatter3.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
+                                    formatter3.timeZone = TimeZone(abbreviation: "UTC")
+                                    date = formatter3.date(from: loginTimeString)
+                                }
+                            } else if let updatedAtDict = record["updatedAt"] as? [String: Any],
+                                      let updatedAtString = updatedAtDict["iso"] as? String {
+                                // 回退到 updatedAt 字段
                                 let formatter = ISO8601DateFormatter()
                                 formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
                                 date = formatter.date(from: updatedAtString)
@@ -547,10 +613,10 @@ extension LeanCloudService {
         
         func attempt() {
             // 🎯 修改：统一使用 LoginRecord 表，不再区分用户类型
-            // ✅ 按照开发指南：使用 LCQuery 创建查询（与 fetchUserAvatar 一致）
+            // ✅ 按照开发指南：使用 LCQuery 创建查询
             let query = LCQuery(className: "LoginRecord")
             query.whereKey("userId", .equalTo(userId))
-            query.whereKey("updatedAt", .descending) // 🔧 统一：使用 updatedAt（与用户头像查询一致）
+            query.whereKey("loginTime", .descending) // 🔧 修改：使用 loginTime 字段排序
             query.limit = 1
             
             query.find { result in
@@ -558,11 +624,33 @@ extension LeanCloudService {
                     switch result {
                     case .success(let records):
                         if let firstRecord = records.first {
-                            // 🎯 修改：统一使用 updatedAt 字段（与用户头像查询一致）
+                            // 🎯 修改：使用 loginTime 字段（字符串类型，需要解析）
                             var date: Date?
                             
-                            // 优先使用 updatedAt 字段（Date 类型）
-                            if let updatedAt = firstRecord.updatedAt {
+                            // 优先使用 loginTime 字段（String 类型，需要解析）
+                            if let loginTimeString = firstRecord["loginTime"]?.stringValue, !loginTimeString.isEmpty {
+                                // 尝试多种时间格式解析
+                                // 1. 尝试ISO8601格式（带毫秒）
+                                let formatter1 = ISO8601DateFormatter()
+                                formatter1.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                                date = formatter1.date(from: loginTimeString)
+                                
+                                // 2. 如果失败，尝试ISO8601格式（不带毫秒）
+                                if date == nil {
+                                    let formatter2 = ISO8601DateFormatter()
+                                    formatter2.formatOptions = [.withInternetDateTime]
+                                    date = formatter2.date(from: loginTimeString)
+                                }
+                                
+                                // 3. 如果还是失败，尝试自定义格式
+                                if date == nil {
+                                    let formatter3 = DateFormatter()
+                                    formatter3.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
+                                    formatter3.timeZone = TimeZone(abbreviation: "UTC")
+                                    date = formatter3.date(from: loginTimeString)
+                                }
+                            } else if let updatedAt = firstRecord.updatedAt {
+                                // 回退到 updatedAt 字段
                                 date = updatedAt.value
                             } else if let createdAt = firstRecord.createdAt {
                                 // 回退到 createdAt 字段

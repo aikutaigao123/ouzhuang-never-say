@@ -151,13 +151,4 @@ extension LeanCloudService {
         }
     }
     
-    // 打印指定表的详细数据
-    func printTableData(tableName: String, data: [[String: Any]]) {
-        // 此函数保留用于可能的调试需求，但不执行任何输出
-    }
-    
-    // 打印所有表的汇总信息
-    func printAllTablesSummary(allData: [String: [[String: Any]]]) {
-        // 此函数保留用于可能的调试需求，但不执行任何输出
-    }
 }

@@ -177,35 +177,6 @@ extension MessageView {
         return (totalMessages: totalMessages, matchedMessages: matchedMessages, matchRate: matchRate)
     }
     
-    /**
-     * 打印匹配统计信息
-     */
-    internal func printMatchStatistics() {
-        let _ = getMatchStatistics()
-        
-    }
-    
-    // MARK: - Match Debug Methods
-    
-    /**
-     * 打印匹配状态调试信息
-     */
-    internal func printMatchDebugInfo() {
-        
-        for _ in existingMessages.prefix(10) {
-        }
-    }
-    
-    /**
-     * 测试匹配状态检测
-     */
-    internal func testMatchStatusDetection() {
-        
-        for message in existingMessages.prefix(5) {
-            let _ = detectMatchStatus(for: message)
-        }
-        
-    }
     
     // MARK: - Match Event Handling Methods
     

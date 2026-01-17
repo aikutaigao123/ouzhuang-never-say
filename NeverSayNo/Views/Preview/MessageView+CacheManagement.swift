@@ -278,17 +278,4 @@ extension MessageView {
         
     }
     
-    // MARK: - Cache Debug Methods
-    
-    /// 打印缓存调试信息
-    internal func printCacheDebugInfo() {
-        
-        // 打印头像缓存详情
-        for (_, _) in existingAvatarCache.prefix(5) {
-        }
-        
-        // 打印用户名缓存详情
-        for (_, _) in existingUserNameCache.prefix(5) {
-        }
-    }
 }

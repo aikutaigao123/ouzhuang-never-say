@@ -37,13 +37,15 @@ extension LeanCloudService {
     func createLoginRecordTable(completion: @escaping (Bool) -> Void) {
         
         // 通过插入一条测试记录来创建表
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         let testData: [String: Any] = [
             "userId": "test_user",
             "userName": "测试用户",
             "userEmail": "test@example.com",
             "loginType": "guest",
             "deviceId": "test_device",
-            "loginTime": ISO8601DateFormatter().string(from: Date()),
+            "loginTime": formatter.string(from: Date()),
             "ipAddress": "127.0.0.1",
             "userAgent": "NeverSayNo/1.0",
             "status": "active"
@@ -171,7 +173,9 @@ extension LeanCloudService {
     private func updateAppleLoginRecord(existingRecord: LCObject, userId: String, userName: String, userEmail: String?, authData: [String: Any], deviceId: String, completion: @escaping (Bool) -> Void) {
         
         do {
-            let loginTime = ISO8601DateFormatter().string(from: Date())
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            let loginTime = formatter.string(from: Date())
             
             // ✅ 按照开发指南：更新属性值
             try existingRecord.set("userName", value: userName)
@@ -239,7 +243,9 @@ extension LeanCloudService {
         let loginRecord = LCObject(className: "LoginRecord")
         
         do {
-            let loginTime = ISO8601DateFormatter().string(from: Date())
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            let loginTime = formatter.string(from: Date())
             
             // ✅ 按照开发指南：设置属性值
             try loginRecord.set("userId", value: userId)
@@ -345,7 +351,9 @@ extension LeanCloudService {
     private func updateLoginRecord(existingRecord: LCObject, userId: String, userName: String, userEmail: String?, loginType: String, deviceId: String, completion: @escaping (Bool) -> Void) {
         
         do {
-            let loginTime = ISO8601DateFormatter().string(from: Date())
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            let loginTime = formatter.string(from: Date())
             
             // ✅ 按照开发指南：更新属性值
             try existingRecord.set("userName", value: userName)
@@ -384,7 +392,9 @@ extension LeanCloudService {
         let loginRecord = LCObject(className: "LoginRecord")
         
         do {
-            let loginTime = ISO8601DateFormatter().string(from: Date())
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            let loginTime = formatter.string(from: Date())
             
             // ✅ 按照开发指南：设置属性值
             try loginRecord.set("userId", value: userId)
@@ -500,10 +510,10 @@ extension LeanCloudService {
         }
         cacheLock.unlock()
         
-        // ✅ 按照开发指南：使用 LCQuery 创建查询（与 fetchUserAvatar 一致）
+        // ✅ 按照开发指南：使用 LCQuery 创建查询
         let query = LCQuery(className: "LoginRecord")
         query.whereKey("userId", .equalTo(userId))
-        query.whereKey("updatedAt", .descending) // 🔧 统一：使用 updatedAt（与用户头像查询一致）
+        query.whereKey("loginTime", .descending) // 🔧 修改：使用 loginTime 字段排序
         query.limit = 1
         
         query.find { result in

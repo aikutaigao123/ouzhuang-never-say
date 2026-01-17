@@ -150,13 +150,45 @@ extension ContentView {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             // 检查用户是否仍然登录（信息确认完成后）
             if userManager.isLoggedIn {
-                LeanCloudService.shared.fetchNotificationItems { items, error in
+                LeanCloudService.shared.fetchNotificationItems { items, version, error in
                     DispatchQueue.main.async {
                         // 再次检查用户是否仍然登录
                         if userManager.isLoggedIn, !items.isEmpty {
                             // 依次显示所有通知（全局通知在前，用户特定通知在后）
                             let notificationItems = items.map { (message: $0.message, isBlacklist: $0.isBlacklist) }
                             stateManager.showAppLaunchToasts(items: notificationItems)
+                        }
+                        
+                        // 处理版本信息：检查是否需要更新
+                        // 🎯 注意：如果 Version 表为空，version 为 nil，不做任何提示
+                        if let version = version {
+                            // 检查版本是否一致
+                            if let currentVersion = VersionHelpers.getCurrentAppVersion() {
+                                let isVersionDifferent = !VersionHelpers.isCurrentVersionEqual(version.version)
+                                
+                                if isVersionDifferent {
+                                    // 版本不一致，显示更新提示
+                                    var updateMessage: String
+                                    
+                                    // 如果有更新消息，使用更新消息
+                                    if let customMessage = version.updateMessage, !customMessage.isEmpty {
+                                        updateMessage = customMessage
+                                    } else if let minVersion = version.minVersion,
+                                              VersionHelpers.isCurrentVersionLessThan(minVersion) {
+                                        // 如果当前版本低于最低支持版本，显示强制更新提示
+                                        updateMessage = "您的版本（\(currentVersion)）已不再支持，请更新至最新版本（\(version.version)）以继续使用。"
+                                    } else {
+                                        // 普通版本更新提示
+                                        updateMessage = "发现新版本（\(version.version)），当前版本为 \(currentVersion)。\n\n新版本包含功能优化和问题修复，建议您及时更新以获得更好的使用体验。"
+                                    }
+                                    
+                                // 显示版本更新通知（使用专门的版本更新方法）
+                                stateManager.showVersionUpdateToast(message: updateMessage)
+                            }
+                        }
+                            
+                            // 检查最低支持版本（如果版本不一致检查中已经处理过，这里不再重复显示）
+                            // 注意：此检查已在版本不一致检查中处理，这里保留作为备用
                         }
                     }
                 }

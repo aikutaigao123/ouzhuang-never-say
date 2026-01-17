@@ -86,12 +86,43 @@ extension LegacySearchView {
             return
         }
         
+        // 🎯 新增：每次点击消息按钮时检查邮箱格式
+        let loginType = currentUser.loginType
+        // 游客账号不检查邮箱格式
+        if loginType != .guest {
+            // 从 UserNameRecord 表查询邮箱
+            LeanCloudService.shared.fetchUserEmailByUserId(objectId: userId) { email, error in
+                DispatchQueue.main.async {
+                    if error == nil, let currentEmail = email, !currentEmail.isEmpty {
+                        // 检查是否是默认邮箱格式
+                        let isDefaultEmail = currentEmail.hasSuffix("@internal.com") || 
+                                           currentEmail.hasSuffix("@apple.com") || 
+                                           currentEmail.hasSuffix("@guest.com")
+                        
+                        if isDefaultEmail {
+                            // 是默认邮箱格式，显示提示
+                            NotificationCenter.default.post(name: NSNotification.Name("ShowDefaultEmailAlert"), object: nil)
+                            return // 不继续执行，先显示提示
+                        }
+                    }
+                    
+                    // 不是默认邮箱或查询失败，继续执行（显示消息界面）
+                    self.continueMessageButtonTap(userId: userId)
+                }
+            }
+        } else {
+            // 游客账号，直接继续执行
+            continueMessageButtonTap(userId: userId)
+        }
+    }
+    
+    /// 继续执行消息按钮点击（显示消息界面）
+    private func continueMessageButtonTap(userId: String) {
         // 记录点击
         UserDefaultsManager.recordMessageButtonClick(userId: userId)
         
         // 显示消息界面
         showMessageSheet = true
-        
     }
     
     /// 打印Message表数据

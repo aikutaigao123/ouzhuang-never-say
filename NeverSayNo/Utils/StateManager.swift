@@ -14,9 +14,11 @@ class StateManager: ObservableObject {
     @Published var appLaunchMessage = ""
     @Published var currentNotificationIsBlacklist = false // 🎯 新增：当前通知的Blacklist状态
     @Published var isTriggerNotification = false // 🎯 新增：当前通知是否为触发消息（固定内容）
+    @Published var isVersionUpdateNotification = false // 🎯 新增：当前通知是否为版本更新提示
     
     // 🎯 新增：通知队列，用于依次显示多条通知
-    private var notificationQueue: [(message: String, isBlacklist: Bool)] = []
+    // (message, isBlacklist, isVersionUpdate)
+    private var notificationQueue: [(message: String, isBlacklist: Bool, isVersionUpdate: Bool)] = []
     private var isShowingNotification = false
     
     // MARK: - 拍一拍消息弹窗状态
@@ -207,6 +209,13 @@ class StateManager: ObservableObject {
     /// 显示通知弹窗（支持多条通知依次显示）
     /// - Parameter items: 通知项数组，按优先级排序（全局通知在前，用户特定通知在后）
     func showAppLaunchToasts(items: [(message: String, isBlacklist: Bool)]) {
+        let itemsWithVersionFlag = items.map { (message: $0.message, isBlacklist: $0.isBlacklist, isVersionUpdate: false) }
+        showAppLaunchToasts(items: itemsWithVersionFlag)
+    }
+    
+    /// 显示通知弹窗（支持多条通知依次显示，包含版本更新标志）
+    /// - Parameter items: 通知项数组，包含版本更新标志
+    private func showAppLaunchToasts(items: [(message: String, isBlacklist: Bool, isVersionUpdate: Bool)]) {
         guard !items.isEmpty else { return }
         
         // 🎯 新增：读取 hello world.txt 文件内容作为触发消息
@@ -227,6 +236,12 @@ class StateManager: ObservableObject {
         if !isShowingNotification {
             showNextNotification()
         }
+    }
+    
+    /// 显示版本更新通知
+    /// - Parameter message: 更新提示消息
+    func showVersionUpdateToast(message: String) {
+        showAppLaunchToasts(items: [(message: message, isBlacklist: false, isVersionUpdate: true)])
     }
     
     /// 获取触发消息（硬编码的 hello world.txt 内容）
@@ -281,6 +296,7 @@ https://docs.leancloud.cn/sdk/announcements/sunset-announcement
         let item = notificationQueue.removeFirst()
         appLaunchMessage = item.message
         currentNotificationIsBlacklist = item.isBlacklist
+        isVersionUpdateNotification = item.isVersionUpdate
         
         // 🎯 新增：检测是否为触发消息（固定内容）
         let triggerMessage = loadHelloWorldMessage()

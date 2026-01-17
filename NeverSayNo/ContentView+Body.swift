@@ -542,7 +542,7 @@ extension ContentView {
         } message: {
             Text("您的账号因违反社区管理规定已被限制使用，请联系管理人员。\n\n管理人员邮箱：928322941@qq.com")
         }
-        .alert("请设置真实邮箱", isPresented: $showDefaultEmailAlert) {
+        .alert("请设置真实联系方式", isPresented: $showDefaultEmailAlert) {
             Button("去设置") {
                 // 跳转到个人资料页面设置邮箱
                 NotificationCenter.default.post(name: NSNotification.Name("ShowProfileSheet"), object: nil)
@@ -552,7 +552,7 @@ extension ContentView {
                 NotificationCenter.default.post(name: NSNotification.Name("ContinueSearchAfterEmailAlert"), object: nil)
             }
         } message: {
-            Text("请将邮箱设置为真实的邮箱，以便其他用户能够联系到您")
+            Text("请将邮箱设置为真实联系方式")
         }
         .overlay(alignment: .center) {
             // 🎯 新增：好友申请自定义弹窗

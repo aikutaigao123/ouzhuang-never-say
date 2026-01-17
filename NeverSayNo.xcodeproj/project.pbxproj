@@ -12,6 +12,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		2814BA1D2F189191006C1B78 /* 永泰.gpx */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = "永泰.gpx"; path = "../永泰.gpx"; sourceTree = "<group>"; };
+		2814BA1E2F189C69006C1B78 /* 永泰2.gpx */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = "永泰2.gpx"; path = "../永泰2.gpx"; sourceTree = "<group>"; };
 		2835A9622EA60EA200B19BDB /* AppIntents.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppIntents.framework; path = System/Library/Frameworks/AppIntents.framework; sourceTree = SDKROOT; };
 		28CEEA252F15C5B90026FD8F /* TestLocation.gpx */ = {isa = PBXFileReference; lastKnownFileType = text; name = TestLocation.gpx; path = ../TestLocation.gpx; sourceTree = "<group>"; };
 		28CEEA262F15C6730026FD8F /* TestLocation.gpx */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = TestLocation.gpx; path = ../TestLocation.gpx; sourceTree = "<group>"; };
@@ -63,6 +65,8 @@
 		743FE57A2E13E0CF00694704 = {
 			isa = PBXGroup;
 			children = (
+				2814BA1E2F189C69006C1B78 /* 永泰2.gpx */,
+				2814BA1D2F189191006C1B78 /* 永泰.gpx */,
 				28CEEA252F15C5B90026FD8F /* TestLocation.gpx */,
 				28CEEA262F15C6730026FD8F /* TestLocation.gpx */,
 				743FE5852E13E0CF00694704 /* NeverSayNo */,
@@ -247,7 +251,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.88;
+				MARKETING_VERSION = 1.92;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.yonderspace-cd.NeverSayNo.app";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -275,7 +279,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.88;
+				MARKETING_VERSION = 1.92;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.yonderspace-cd.NeverSayNo.app";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
